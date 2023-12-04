@@ -8,3 +8,6 @@ Loader::registerAutoLoadClasses(null,
 		'Helpers' => '/local/classes/Helpers.php',
 	]
 );
+
+
+AddEventHandler("iblock", "OnBeforeIBlockElementUpdate", ["Helpers", "OnBeforeIBlockElementUpdateHandler"]);
