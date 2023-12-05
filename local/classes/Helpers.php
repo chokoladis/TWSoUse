@@ -113,7 +113,6 @@ class Helpers
 		return $userRealId;
 	}
 
-	// создаем обработчик события "OnBeforeIBlockElementUpdate"
 	public static function OnBeforeIBlockElementUpdateHandler(&$arFields)
 	{
 		$iblockID = CIBlockTools::GetIBlockId('clothes');
@@ -127,46 +126,64 @@ class Helpers
 				$fileLog = $_SERVER["DOCUMENT_ROOT"].'/local/log_CCatalogProductSet.txt';
 				$log = '';
 
+				$mainProductSetsId = key($arProductItems);
 				$arProductItems = reset($arProductItems);
-				$arProductSetsId = [$arProductItems['ITEM_ID']];
+				
+				if (!$arProductItems['ITEM_ID']){
+					$mainProductId = $arFields['ID'];
 
-				foreach($arProductItems['ITEMS'] as $item){
-					$arProductSetsId[] = $item['ITEM_ID'];
+					$filedsAdd = [
+						'ITEM_ID' => $mainProductId,
+						'TYPE' => 2,
+						'ITEMS' => []
+					];					
+
+					if(CCatalogProductSet::add($filedsAdd))						
+						$log .= date('Y-m-d H:i:s') . "Добавлен новый набор для ".$mainProductId.PHP_EOL;
+					else
+						$log .= date('Y-m-d H:i:s') . "Не удалось добавить набор для ".$mainProductId.PHP_EOL;
+				} else {
+					$mainProductId = $arProductItems['ITEM_ID'];
 				}
 
-				foreach($arProductSetsId as $product){
-					if ($product == $arProductItems['ITEM_ID'])
+				$arProductSetsId = [ $mainProductSetsId => $mainProductId];
+
+				foreach($arProductItems['ITEMS'] as $item){
+					$arProductSetsId[$item['ID']] = $item['ITEM_ID'];
+				}
+				// $log .= date('Y-m-d H:i:s') . " mainProductSetsId- ".$mainProductSetsId.PHP_EOL;
+
+				foreach($arProductSetsId as $setId => $product){
+					if ($product == $mainProductId)
 						continue;
-					
-					$currProductSets = CCatalogProductSet::getAllSetsByProduct($product, CCatalogProductSet::TYPE_GROUP);
-					$setId = !empty($currProductSets) ? key($currProductSets) : 0;
 
 					$tempAr = $arProductSetsId;
-					$mainKey = array_keys($tempAr, $product);
-					if (!empty($mainKey))
-						unset($tempAr[$mainKey[0]]);
+					unset($tempAr[$setId]);
 
 					$fileds = [
 						"TYPE" => 2,
-						// "SET_ID" => 0,
-						"ITEM_ID" => $product['ITEM_ID'],
+						// "SET_ID" => $setId,
+						"ACTIVE" => "Y",
+						// "QUANTITY" => 1,
+						"ITEM_ID" => $product,
 						"ITEMS" => []
 					];
 
-					foreach($tempAr as $item){
-						$fileds['ITEMS'][] = [
+					foreach($tempAr as $t_setId => $item){
+						$fileds['ITEMS'][$t_setId] = [
+							'ID' => $t_setId,
 							"ACTIVE" => "Y",
-							"ITEM_ID" => $item['ITEM_ID'],
+							"ITEM_ID" => $item,
 							"QUANTITY" => 1
 						];
 					}
-					
-					$log .= date('Y-m-d H:i:s') . "currProductSets ".print_r($currProductSets, true).' - key '.$setId;
+					// $log .= date('Y-m-d H:i:s') . " tempAr ".print_r($fileds, true).PHP_EOL;
+					// $log .= date('Y-m-d H:i:s') . "arProductSetsId ".print_r($arProductSetsId, true).PHP_EOL;
 
-					if(CCatalogProductSet::update($setId, $fileds))						
-						$log .= date('Y-m-d H:i:s') . "Набор изменен для ".$product;
+					if(CCatalogProductSet::update($setId,$fileds))
+						$log .= date('Y-m-d H:i:s') . "Набор изменен для ".$product.PHP_EOL;
 					else
-						$log .= date('Y-m-d H:i:s') . "Набор не изменен для ".$product;
+						$log .= date('Y-m-d H:i:s') . "Набор не изменен для ".$product.PHP_EOL;
 				}
 				
 				
